@@ -6,6 +6,7 @@ import * as types from './types'
 
 import { RecaptchaContentScript } from './content'
 import { HcaptchaContentScript } from './content-hcaptcha'
+import { ImageCaptchaContentScript } from './content-image'
 import * as TwoCaptcha from './provider/2captcha'
 
 export const BuiltinSolutionProviders: types.SolutionProvider[] = [
@@ -39,7 +40,8 @@ export class PuppeteerExtraPluginRecaptcha extends PuppeteerExtraPlugin {
       throwOnError: false,
       solveInViewportOnly: false,
       solveScoreBased: false,
-      solveInactiveChallenges: false
+      solveInactiveChallenges: false,
+      solveImageCaptchas: false
     }
   }
 
@@ -71,6 +73,9 @@ export class PuppeteerExtraPluginRecaptcha extends PuppeteerExtraPlugin {
     if (vendor === 'hcaptcha') {
       scriptSource = HcaptchaContentScript.toString()
       scriptName = 'HcaptchaContentScript'
+    } else if (vendor === 'image') {
+      scriptSource = ImageCaptchaContentScript.toString()
+      scriptName = 'ImageCaptchaContentScript'
     }
     // Some bundlers transform classes to anonymous classes that are assigned to
     // vars (e.g. esbuild). In such cases, `unexpected token '{'` errors are thrown
@@ -109,6 +114,13 @@ export class PuppeteerExtraPluginRecaptcha extends PuppeteerExtraPlugin {
       ) {
         c.filtered = true
         c.filteredReason = 'solveInViewportOnly'
+      }
+      if (
+        c._vendor === 'image' &&
+        !this.opts.solveImageCaptchas
+      ) {
+        c.filtered = true
+        c.filteredReason = 'solveImageCaptchas'
       }
       if (c.filtered) {
         this.debug('Filtered out captcha based on provided options', {
@@ -180,6 +192,9 @@ export class PuppeteerExtraPluginRecaptcha extends PuppeteerExtraPlugin {
     const resultHcaptcha: types.FindRecaptchasResult = (await page.evaluate(
       this._generateContentScript('hcaptcha', 'findRecaptchas')
     )) as any
+    const resultImageCaptcha: types.FindRecaptchasResult = (await page.evaluate(
+      this._generateContentScript('image', 'findRecaptchas')
+    )) as any
 
     const filterResults = this._filterRecaptchas(resultRecaptcha.captchas)
     this.debug(
@@ -187,9 +202,9 @@ export class PuppeteerExtraPluginRecaptcha extends PuppeteerExtraPlugin {
     )
 
     const response: types.FindRecaptchasResult = {
-      captchas: [...filterResults.captchas, ...resultHcaptcha.captchas],
+      captchas: [...filterResults.captchas, ...resultHcaptcha.captchas, ...resultImageCaptcha.captchas],
       filtered: filterResults.filtered,
-      error: resultRecaptcha.error || resultHcaptcha.error
+      error: resultRecaptcha.error || resultHcaptcha.error || resultImageCaptcha.error || null
     }
     this.debug('findRecaptchas', response)
     if (this.opts.throwOnError && response.error) {
@@ -231,7 +246,8 @@ export class PuppeteerExtraPluginRecaptcha extends PuppeteerExtraPlugin {
     )
     response.error =
       response.error ||
-      response.solutions.find((s: types.CaptchaSolution) => !!s.error)
+      response.solutions.find((s: types.CaptchaSolution) => !!s.error) ||
+      null
     this.debug('getRecaptchaSolutions', response)
     if (response && response.error) {
       console.warn(
@@ -267,12 +283,24 @@ export class PuppeteerExtraPluginRecaptcha extends PuppeteerExtraPlugin {
           })
         )) as any)
       : { solved: [] }
+    const hasImageCaptcha = !!solutions.find(s => s._vendor === 'image')
+    const solvedImageCaptcha: types.EnterRecaptchaSolutionsResult = hasImageCaptcha
+      ? ((await page.evaluate(
+          this._generateContentScript('image', 'enterRecaptchaSolutions', {
+            solutions
+          })
+        )) as any)
+      : { solved: [] }
 
     const response: types.EnterRecaptchaSolutionsResult = {
-      solved: [...solvedRecaptcha.solved, ...solvedHcaptcha.solved],
-      error: solvedRecaptcha.error || solvedHcaptcha.error
+      solved: [
+        ...solvedRecaptcha.solved,
+        ...solvedHcaptcha.solved,
+        ...solvedImageCaptcha.solved
+      ],
+      error: solvedRecaptcha.error || solvedHcaptcha.error || solvedImageCaptcha.error || null
     }
-    response.error = response.error || response.solved.find(s => !!s.error)
+    response.error = response.error || response.solved.find(s => !!s.error) || null
     this.debug('enterRecaptchaSolutions', response)
     if (this.opts.throwOnError && response.error) {
       throw new Error(response.error)

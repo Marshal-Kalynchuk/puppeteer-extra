@@ -56,7 +56,7 @@ export type SolveRecaptchasResult = FindRecaptchasResult &
   EnterRecaptchaSolutionsResult &
   GetSolutionsResult
 
-export type CaptchaVendor = 'recaptcha' | 'hcaptcha'
+export type CaptchaVendor = 'recaptcha' | 'hcaptcha' | 'image'
 
 export type CaptchaType = 'checkbox' | 'invisible' | 'score'
 
@@ -79,6 +79,8 @@ export interface CaptchaInfo {
   callback?: string | Function
   hasResponseElement?: boolean
   url?: string
+  imageUrl?: string // URL to the image captcha
+  imageBase64?: string // Base64 encoded image data
   display?: {
     size?: string
     theme?: string
@@ -87,7 +89,10 @@ export interface CaptchaInfo {
     width?: string
     height?: string
   }
+  inputElement?: string // Selector for the input field where solution should be entered
+  submitButton?: string // Selector for the submit button
 }
+
 
 export type FilteredCaptcha = CaptchaInfo & {
   filtered: boolean
@@ -95,6 +100,7 @@ export type FilteredCaptcha = CaptchaInfo & {
     | 'solveInViewportOnly'
     | 'solveScoreBased'
     | 'solveInactiveChallenges'
+    | 'solveImageCaptchas'
 }
 
 export interface CaptchaSolution {
@@ -108,6 +114,9 @@ export interface CaptchaSolution {
   duration?: number
   error?: string | Error
   hasSolution?: boolean
+  imageUrl?: string // URL to the image captcha
+  inputElement?: string // Selector for the input field where solution should be entered
+  submitButton?: string // Selector for the submit button
 }
 
 export interface CaptchaSolved {
@@ -132,6 +141,8 @@ export interface PluginOptions {
   solveScoreBased: boolean
   /** Solve invisible captchas that have no active challenge */
   solveInactiveChallenges: boolean
+  /** Solve image captchas (regular captchas with image) */
+  solveImageCaptchas: boolean
 
   provider?: SolutionProvider
 }
