@@ -3,7 +3,7 @@ export default {
   environmentVariables: {
     TS_NODE_COMPILER_OPTIONS: '{"module":"commonjs"}'
   },
-  files: ['src/**.test.ts'],
+  files: ['src/**/*.test.ts', 'test/**/*.test.ts'],
   extensions: ['ts'],
   require: ['ts-node/register']
 }

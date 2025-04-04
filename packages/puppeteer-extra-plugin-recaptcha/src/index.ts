@@ -115,13 +115,6 @@ export class PuppeteerExtraPluginRecaptcha extends PuppeteerExtraPlugin {
         c.filtered = true
         c.filteredReason = 'solveInViewportOnly'
       }
-      if (
-        c._vendor === 'image' &&
-        !this.opts.solveImageCaptchas
-      ) {
-        c.filtered = true
-        c.filteredReason = 'solveImageCaptchas'
-      }
       if (c.filtered) {
         this.debug('Filtered out captcha based on provided options', {
           id: c.id,

@@ -1,9 +1,9 @@
 import test from 'ava'
 
-import RecaptchaPlugin from './index'
-// import * as types from './types'
+import RecaptchaPlugin from '../src/index'
+// import * as types from '../src/types'
 
-// import { Puppeteer } from './puppeteer-mods'
+// import { Puppeteer } from '../src/puppeteer-mods'
 
 import { addExtra } from 'puppeteer-extra'
 
@@ -129,4 +129,4 @@ test('will not throw when no captchas are found', async t => {
   await browser.close()
 })
 
-// TODO: test/mock the rest
+// TODO: test/mock the rest 

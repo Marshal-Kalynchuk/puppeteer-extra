@@ -1,6 +1,6 @@
 import test from 'ava'
 
-import RecaptchaPlugin from './index'
+import RecaptchaPlugin from '../src/index'
 
 import { addExtra } from 'puppeteer-extra'
 
@@ -320,4 +320,4 @@ test('will correctly detect v3-programmatic.html with solveScoreBased:true', asy
   })
 
   await browser.close()
-})
+}) 

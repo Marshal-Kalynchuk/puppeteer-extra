@@ -1,6 +1,6 @@
 import test from 'ava'
 
-import RecaptchaPlugin from './index'
+import RecaptchaPlugin from '../src/index'
 
 import { addExtra } from 'puppeteer-extra'
 
@@ -253,4 +253,4 @@ test('will not solve score based reCAPTCHAs by default', async t => {
   t.is(solved.length, 0)
 
   await browser.close()
-})
+}) 
