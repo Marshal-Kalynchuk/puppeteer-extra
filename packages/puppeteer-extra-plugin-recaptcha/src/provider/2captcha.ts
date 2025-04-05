@@ -130,6 +130,7 @@ async function getSolution(
       
       solution.providerCaptchaId = result.id
       solution.text = result.text
+      solution.imageUrl = captcha.imageUrl
       solution.responseAt = new Date()
       solution.hasSolution = !!solution.text
       solution.duration = secondsBetweenDates(

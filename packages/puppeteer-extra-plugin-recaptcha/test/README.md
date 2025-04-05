@@ -4,12 +4,21 @@ This directory contains tests for the puppeteer-extra-plugin-recaptcha plugin.
 
 ## Test Structure
 
-The tests are organized by functionality:
+The tests are now organized by captcha type and functionality:
 
-- `index.test.ts`: Basic detection tests for reCAPTCHA and hCAPTCHA
-- `detection.test.ts`: Extensive detection tests for all types of reCAPTCHA (checkbox, invisible, score-based)
-- `solve.test.ts`: Tests for solving various types of CAPTCHAs
-- `image-captcha.test.js`: Tests for the image CAPTCHA detection and solving
+### Captcha Types
+- `/captcha-types/recaptcha.test.ts`: Tests specific to reCAPTCHA detection and solving
+- `/captcha-types/hcaptcha.test.ts`: Tests specific to hCAPTCHA detection and solving
+- `/captcha-types/image-captcha.test.ts`: Tests specific to image CAPTCHA detection and solving
+
+### Common Tests
+- `/common/detection.test.ts`: Common detection functionality and utilities
+- `/common/solving.test.ts`: Common solving functionality and utilities
+
+### Integration Tests
+- `/integration/index.test.ts`: Integration tests for the plugin itself
+
+This structure makes it easier to add new captcha types in the future while keeping the test files organized and maintainable.
 
 ## Running Tests
 
@@ -23,18 +32,18 @@ For running specific tests:
 
 ```bash
 # Run only image captcha tests
-npm test -- test/image-captcha.test.js
+npm test -- test/captcha-types/image-captcha.test.ts
 
-# Run only detection tests
-npm test -- dist/detection.test.js
+# Run only integration tests
+npm test -- test/integration/index.test.ts
 ```
 
 ## Test Configuration
 
-The tests use the AVA test runner. Configuration is in `ava.config.js` at the package root.
+The tests use the AVA test runner. Configuration is in `ava.config-ts.js` at the package root, which is set up to run TypeScript tests directly without pre-compilation.
 
 ## Notes
 
-- For tests that require solving CAPTCHAs (in `solve.test.ts`), you need to set the `TWOCAPTCHA_TOKEN` environment variable with a valid 2captcha API token.
+- For tests that require solving CAPTCHAs, you need to set the `TWOCAPTCHA_TOKEN` environment variable with a valid 2captcha API token.
 - Tests will skip the actual solving if the token is not provided.
 - The detection tests use public demo pages for testing detection capabilities. 

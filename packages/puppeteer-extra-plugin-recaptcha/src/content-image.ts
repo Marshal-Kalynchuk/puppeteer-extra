@@ -64,44 +64,61 @@ export class ImageCaptchaContentScript {
     }
 
     try {
-      // Common image captcha patterns
-      const captchaSelectors = [
-        'img[src*="captcha"]',
-        'img[src*="CAPTCHA"]',
-        'img[alt*="captcha"]',
-        'img[alt*="CAPTCHA"]',
-        'img[id*="captcha"]',
-        'img[class*="captcha"]'
-      ]
+      // Track processed image URLs to avoid duplicates
+      const processedUrls = new Set<string>()
 
-      for (const selector of captchaSelectors) {
-        const elements = document.querySelectorAll(selector)
-        for (let i = 0; i < elements.length; i++) {
-          const img = elements[i] as HTMLImageElement
+      // Find all forms in the document
+      const forms = document.querySelectorAll('form')
+      this.debug(`Found ${forms.length} forms on the page`)
+
+      // Function to check if an image is a captcha (case insensitive)
+      const isCaptchaImage = (img: HTMLImageElement): boolean => {
+        const src = img.src.toLowerCase()
+        const alt = (img.alt || '').toLowerCase()
+        const id = (img.id || '').toLowerCase()
+        const className = (img.className || '').toLowerCase()
+        
+        return (
+          src.includes('captcha') ||
+          alt.includes('captcha') ||
+          id.includes('captcha') ||
+          className.includes('captcha')
+        )
+      }
+
+      // First try to find captchas within forms
+      for (const form of Array.from(forms)) {
+        // Get all images within the form
+        const images = form.querySelectorAll('img')
+        this.debug(`Found ${images.length} images within a form`)
+        
+        for (let i = 0; i < images.length; i++) {
+          const img = images[i] as HTMLImageElement
           if (!img || !img.src) continue
+          
+          // Check if this is a captcha image using case-insensitive check
+          if (!isCaptchaImage(img)) continue
+
+          // Skip if this URL has already been processed
+          if (processedUrls.has(img.src)) {
+            this.debug('Skipping duplicate image', { src: img.src })
+            continue
+          }
+
+          // Mark this URL as processed
+          processedUrls.add(img.src)
 
           try {
             // Create unique ID
             const id = `image_${Math.random().toString(36).substring(2, 9)}`
             
-            // Create captcha info
+            // Create captcha info - use original URL
             const captchaInfo: types.CaptchaInfo = {
               _vendor: 'image',
               id: id,
-              imageUrl: img.src,
+              imageUrl: img.src, // Preserve original URL
               url: window.location.href,
               isInViewport: this.isInViewport(img)
-            }
-
-            // Try to find related input field and submit button
-            const inputElement = this.findRelatedInputField(img)
-            if (inputElement) {
-              captchaInfo.inputElement = this.getUniqueSelector(inputElement)
-            }
-
-            const submitButton = this.findSubmitButton(img, inputElement)
-            if (submitButton) {
-              captchaInfo.submitButton = this.getUniqueSelector(submitButton)
             }
 
             // Convert image to base64 if it's on the same origin
@@ -166,7 +183,9 @@ export class ImageCaptchaContentScript {
    * Find related input field for a captcha image
    */
   private findRelatedInputField(imgElement: HTMLImageElement): HTMLElement | null {
-    // Try to find the closest form
+    this.debug('Finding related input field for image', { src: imgElement.src })
+    
+    // Strategy 1: Check for form-based inputs
     let form = imgElement.closest('form')
     if (!form) {
       // Try to find a nearby form
@@ -179,47 +198,151 @@ export class ImageCaptchaContentScript {
       }
     }
 
-    // If we have a form, look for text inputs
-    if (form) {
-      // Common captcha input types
-      const inputSelectors = [
-        'input[name*="captcha"]',
-        'input[id*="captcha"]',
-        'input[class*="captcha"]',
-        'input[type="text"]',
-        'input:not([type])'
-      ]
+    // Common input selectors to try (case insensitive)
+    const inputSelectors = [
+      'input[name*="captcha" i]',
+      'input[id*="captcha" i]',
+      'input[class*="captcha" i]',
+      'input[placeholder*="captcha" i]',
+      'input[placeholder*="enter text" i]',
+      'input[placeholder*="answer" i]',
+      'input[aria-label*="captcha" i]',
+      'input[type="text"]',
+      'input:not([type])'
+    ]
 
+    // Strategy 2: If we have a form, search within it
+    if (form) {
+      this.debug('Found form, searching within it for inputs')
+      
+      // First try captcha-specific inputs
       for (const selector of inputSelectors) {
         const inputs = form.querySelectorAll(selector)
         for (let i = 0; i < inputs.length; i++) {
-          // Skip hidden inputs
-          if ((inputs[i] as HTMLInputElement).type === 'hidden') continue
-          
-          // Prioritize inputs with captcha in name/id/placeholder
           const inputEl = inputs[i] as HTMLInputElement
-          const nameId = (inputEl.name || inputEl.id || '').toLowerCase()
-          const placeholder = (inputEl.placeholder || '').toLowerCase()
+          if (inputEl.type === 'hidden') continue
           
-          if (nameId.includes('captcha') || placeholder.includes('captcha')) {
-            return inputEl
-          }
-        }
-        
-        // If no captcha-specific input found, return the first visible text input
-        if (inputs.length > 0) {
-          return inputs[0] as HTMLElement
+          this.debug('Found input within form', { 
+            selector, 
+            name: inputEl.name, 
+            id: inputEl.id 
+          })
+          return inputEl
         }
       }
     }
 
-    // Try to find nearby text inputs if no form was found
-    const closestInput = document.querySelector('input[type="text"][name*="captcha"], input[id*="captcha"]')
-    if (closestInput) {
-      return closestInput as HTMLElement
+    // Strategy 3: Look in the closest common parent container
+    // This helps with table-based layouts or div structures
+    let currentNode: HTMLElement | null = imgElement;
+    const maxLevelsUp = 5; // Don't go too far up the DOM tree
+    
+    for (let i = 0; i < maxLevelsUp && currentNode; i++) {
+      currentNode = currentNode.parentElement;
+      if (!currentNode) break;
+      
+      // Check if this parent contains any inputs
+      for (const selector of inputSelectors) {
+        const inputs = currentNode.querySelectorAll(selector);
+        for (let j = 0; j < inputs.length; j++) {
+          const input = inputs[j] as HTMLInputElement;
+          if (input.type === 'hidden') continue;
+          
+          this.debug('Found input in parent container', { 
+            level: i, 
+            containerTag: currentNode.tagName,
+            inputName: input.name, 
+            inputId: input.id 
+          });
+          return input;
+        }
+      }
+      
+      // Special case for table structures - check siblings of parent
+      if (currentNode.tagName === 'TD' || currentNode.tagName === 'TR') {
+        const siblingRows = currentNode.parentElement?.children || [];
+        for (let j = 0; j < siblingRows.length; j++) {
+          const inputs = siblingRows[j].querySelectorAll('input[type="text"]');
+          if (inputs.length > 0) {
+            this.debug('Found input in sibling table row', {
+              inputName: (inputs[0] as HTMLInputElement).name,
+              inputId: (inputs[0] as HTMLInputElement).id
+            });
+            return inputs[0] as HTMLElement;
+          }
+        }
+      }
     }
 
-    return null
+    // Strategy 4: Check siblings and nearby elements (for non-form layouts)
+    currentNode = imgElement.parentElement;
+    if (currentNode) {
+      // Check sibling elements
+      const siblings = currentNode.parentElement?.children || [];
+      for (let i = 0; i < siblings.length; i++) {
+        if (siblings[i] === currentNode) continue; // Skip the image container itself
+        
+        // Check for inputs directly in sibling
+        const inputs = siblings[i].querySelectorAll('input[type="text"]');
+        if (inputs.length > 0) {
+          this.debug('Found input in sibling element', {
+            siblingTag: siblings[i].tagName,
+            inputName: (inputs[0] as HTMLInputElement).name,
+            inputId: (inputs[0] as HTMLInputElement).id
+          });
+          return inputs[0] as HTMLElement;
+        }
+        
+        // Or nested in sibling's children
+        const nestedInputs = siblings[i].querySelectorAll('input');
+        for (let j = 0; j < nestedInputs.length; j++) {
+          const input = nestedInputs[j] as HTMLInputElement;
+          if (input.type !== 'hidden') {
+            this.debug('Found nested input in sibling', {
+              inputName: input.name,
+              inputId: input.id
+            });
+            return input;
+          }
+        }
+      }
+    }
+
+    // Strategy 5: Last resort - try to find any text input near the image in the document
+    const allInputs = document.querySelectorAll('input[type="text"]');
+    if (allInputs.length > 0) {
+      // Find input that's closest to the captcha image in DOM position
+      const imgRect = imgElement.getBoundingClientRect();
+      let closestInput = null;
+      let closestDistance = Infinity;
+      
+      for (let i = 0; i < allInputs.length; i++) {
+        const input = allInputs[i] as HTMLInputElement;
+        const inputRect = input.getBoundingClientRect();
+        
+        // Calculate distance (simple euclidean distance of centers)
+        const dx = (imgRect.left + imgRect.width/2) - (inputRect.left + inputRect.width/2);
+        const dy = (imgRect.top + imgRect.height/2) - (inputRect.top + inputRect.height/2);
+        const distance = Math.sqrt(dx*dx + dy*dy);
+        
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestInput = input;
+        }
+      }
+      
+      if (closestInput && closestDistance < 500) { // Limit to a reasonable distance
+        this.debug('Found closest input by proximity', {
+          distance: closestDistance,
+          inputName: closestInput.name,
+          inputId: closestInput.id
+        });
+        return closestInput;
+      }
+    }
+
+    this.debug('Could not find related input field');
+    return null;
   }
 
   /**
@@ -262,63 +385,6 @@ export class ImageCaptchaContentScript {
   }
 
   /**
-   * Get a unique selector for an element
-   */
-  private getUniqueSelector(element: HTMLElement): string {
-    // Use ID if available
-    if (element.id) {
-      return `#${element.id}`
-    }
-
-    // Use name for inputs
-    if (element.hasAttribute('name')) {
-      const tagName = element.tagName.toLowerCase()
-      const name = element.getAttribute('name')
-      return `${tagName}[name="${name}"]`
-    }
-
-    // Generate path using classes and tags
-    let path = ''
-    let current = element
-    
-    while (current && current !== document.body) {
-      let selector = current.tagName.toLowerCase()
-      
-      if (current.className) {
-        const classes = current.className.split(/\s+/)
-        if (classes.length > 0 && classes[0] !== '') {
-          selector += `.${classes[0]}`
-        }
-      }
-      
-      // Add nth-of-type if needed
-      const siblings = current.parentElement?.children || []
-      if (siblings.length > 1) {
-        let index = 1
-        for (let i = 0; i < siblings.length; i++) {
-          if (siblings[i].tagName === current.tagName) {
-            if (siblings[i] === current) {
-              selector += `:nth-of-type(${index})`
-              break
-            }
-            index++
-          }
-        }
-      }
-      
-      path = selector + (path ? ' > ' + path : '')
-      current = current.parentElement as HTMLElement
-      
-      // Limit path length
-      if (path.split('>').length > 3) {
-        break
-      }
-    }
-    
-    return path
-  }
-
-  /**
    * Enter image captcha solutions
    */
   public async enterRecaptchaSolutions() {
@@ -346,37 +412,62 @@ export class ImageCaptchaContentScript {
         }
 
         try {
-          // Looking for image, inputElement, and submitButton that we added to the solution
-          // These are optional properties so we need to check if they exist
+          // Find the image element using the imageUrl from the solution
           const imageUrl = (solution as any).imageUrl
-          const inputElementSelector = (solution as any).inputElement
-          const submitButtonSelector = (solution as any).submitButton
-          
-          const image = imageUrl ? document.querySelector(`img[src="${imageUrl}"]`) : null
-          
-          // Find input field
-          let inputElement: HTMLInputElement | null = null
-          if (inputElementSelector) {
-            inputElement = document.querySelector(inputElementSelector) as HTMLInputElement
+          if (!imageUrl) {
+            throw new Error('Missing image URL in solution')
           }
-
+          
+          // Try different methods to find the image
+          this.debug('Looking for image with URL', { imageUrl })
+          
+          // Method 1: Direct URL match (handles both relative and absolute URLs)
+          let image = document.querySelector(`img[src="${imageUrl}"]`) as HTMLImageElement
+          
+          // Method 2: Try with just the filename (for relative URLs)
+          if (!image) {
+            const filename = imageUrl.split('/').pop()
+            if (filename) {
+              this.debug('Trying to find by filename', { filename })
+              image = document.querySelector(`img[src*="${filename}"]`) as HTMLImageElement
+            }
+          }
+          
+          // Method 3: For URLs containing dynamic content (like timestamps), use partial matching
+          if (!image) {
+            this.debug('Trying partial URL matching')
+            const images = document.querySelectorAll('img')
+            for (const img of Array.from(images)) {
+              if (img.src.includes(imageUrl) || imageUrl.includes(img.src)) {
+                image = img as HTMLImageElement
+                break
+              }
+            }
+          }
+          
+          if (!image) {
+            throw new Error(`Cannot find image with URL: ${imageUrl}`)
+          }
+          
+          this.debug('Found image element', { src: image.src })
+          
+          // Now find the input field and submit button at solve time
+          const inputElement = this.findRelatedInputField(image)
           if (!inputElement) {
-            throw new Error('Input element not found')
+            throw new Error('Input element not found for captcha')
           }
 
           // Enter the solution
-          inputElement.value = solution.text
+          (inputElement as HTMLInputElement).value = solution.text
           inputElement.dispatchEvent(new Event('input', { bubbles: true }))
           inputElement.dispatchEvent(new Event('change', { bubbles: true }))
 
-          // Try to find and click submit button if provided
-          if (submitButtonSelector) {
-            const submitButton = document.querySelector(submitButtonSelector) as HTMLElement
-            if (submitButton) {
-              setTimeout(() => {
-                submitButton.click()
-              }, 500)
-            }
+          // Try to find and click submit button
+          const submitButton = this.findSubmitButton(image, inputElement)
+          if (submitButton) {
+            setTimeout(() => {
+              submitButton.click()
+            }, 500)
           }
 
           solved.isSolved = true

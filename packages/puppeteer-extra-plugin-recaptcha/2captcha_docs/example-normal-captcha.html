@@ -1,0 +1,44 @@
+<form class="_widgetForm_1f3oo_26" novalidate=""><div class="_captchaWidgetContainer_1f3oo_22"><img class="_captchaImage_rrn3u_9" src="/dist/web/assets/captcha-rn1S3orp.jpg" alt="normal captcha example" width="250" height="50"><div class="_input_ws73z_1 _captchaField_rrn3u_5 _inputColorNightRider_ws73z_25"><label for="simple-captcha-field" class="_inputLabel_ws73z_5">Enter text from the image</label><input type="text" class="_inputInner_ws73z_12" id="simple-captcha-field" name="simpleCaptcha" placeholder="Enter answer here..." autocomplete="off" value=""></div></div><div class="_actions_1f3oo_36"><button type="submit" class="_actionsItem_1f3oo_41 _button_1cbf7_1 _buttonPrimary_1cbf7_40 _buttonMd_1cbf7_30" data-action="demo_action">Check</button><button type="button" class="_actionsItem_1f3oo_41 _button_1cbf7_1 _buttonSecondary_1cbf7_148 _buttonMd_1cbf7_30">Reset</button></div></form>
+<form action="" method="post" class="feedback_form" id="image_captcha_demo_form">
+    <table>
+        <tbody><tr>
+            <td valign="top">
+                <label for="message">Test message (won't be sent)</label>
+            </td>
+            <td align="right">
+                <textarea name="message" cols="40" rows="6"></textarea>
+            </td>
+        </tr>
+        <tr class="htest_image_container">
+            <td valign="top"></td>
+            <td align="right">
+                <img id="htest_image" src="https://democaptcha.com/manager/includes/veriword.php?rand=1688409361" alt="Captcha image">
+            </td>
+        </tr>
+        <tr>
+            <td valign="top">
+                Try to recognize symbols on the picture
+            </td>
+            <td>
+                <input type="text" name="vericode" id="vericode" maxlength="13" value="">
+            </td>
+        </tr>
+        <tr>
+            <td></td>
+            <td align="left">
+                <input type="submit" class="btn btn-install" value="Send">
+            </td>
+        </tr>
+    </tbody></table>
+<input type="hidden" name="formid" value="image_captcha_demo_form"></form>
+
+<body>
+    <div class="parent">
+        <div class="image">
+            <img class="captchapict" src="/image/demo/textcaptcha/AATMAG.png">
+        </div>
+        <input class="captcha" type="text" placeholder="Answer">
+    </div>
+
+
+</body>

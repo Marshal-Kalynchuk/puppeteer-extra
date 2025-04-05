@@ -89,10 +89,7 @@ export interface CaptchaInfo {
     width?: string
     height?: string
   }
-  inputElement?: string // Selector for the input field where solution should be entered
-  submitButton?: string // Selector for the submit button
 }
-
 
 export type FilteredCaptcha = CaptchaInfo & {
   filtered: boolean
@@ -115,8 +112,6 @@ export interface CaptchaSolution {
   error?: string | Error
   hasSolution?: boolean
   imageUrl?: string // URL to the image captcha
-  inputElement?: string // Selector for the input field where solution should be entered
-  submitButton?: string // Selector for the submit button
 }
 
 export interface CaptchaSolved {
