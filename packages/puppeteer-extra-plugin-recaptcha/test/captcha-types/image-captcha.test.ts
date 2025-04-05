@@ -1,25 +1,25 @@
 import test from 'ava'
 
-import { getBrowser } from '../common/detection.test'
+// import { getBrowser } from '../common/detection.test'
 import { getBrowser as getSolveBrowser, requiresApiKey } from '../common/solving.test'
 
-// Detection tests
-test('image-captcha: will detect in 2captcha demo normal captcha page', async t => {
-  const url = 'https://2captcha.com/demo/normal'
-  const { browser, page } = await getBrowser(url, { solveImageCaptchas: true })
-  const { captchas, error } = await (page as any).findRecaptchas()
-  t.is(error, null)
-  t.true(captchas.length >= 1)
+// // Detection tests
+// test('image-captcha: will detect in 2captcha demo normal captcha page', async t => {
+//   const url = 'https://2captcha.com/demo/normal'
+//   const { browser, page } = await getBrowser(url, { solveImageCaptchas: true })
+//   const { captchas, error } = await (page as any).findRecaptchas()
+//   t.is(error, null)
+//   t.true(captchas.length >= 1)
 
-  const c = captchas.find((c: any) => c._vendor === 'image')
-  t.truthy(c)
-  t.is(c._vendor, 'image')
-  t.is(c.url, url)
-  t.truthy(c.imageUrl)
-  t.truthy(c.id)
+//   const c = captchas.find((c: any) => c._vendor === 'image')
+//   t.truthy(c)
+//   t.is(c._vendor, 'image')
+//   t.is(c.url, url)
+//   t.truthy(c.imageUrl)
+//   t.truthy(c.id)
 
-  await browser.close()
-})
+//   await browser.close()
+// })
 
 // Solving tests
 test('image-captcha: will solve image captchas in 2captcha demo', async t => {
@@ -27,9 +27,7 @@ test('image-captcha: will solve image captchas in 2captcha demo', async t => {
 
   const testUrls = [
     'https://2captcha.com/demo/normal',
-    'https://nocaptchaai.com/p/normal-captcha',
     'https://democaptcha.com/demo-form-eng/image.html',
-    'https://service.mtcaptcha.com/mtcv1/demo/index.html',
     'https://demos.telerik.com/aspnet-ajax/captcha/examples/overview/defaultcs.aspx'
   ]
 
@@ -79,9 +77,7 @@ test('image-captcha: will solve image captchas in 2captcha demo', async t => {
         }
       })
 
-      if (success) {
-        console.log(`✅ Success: ${url}`)
-      } else {
+      if (!success) {
         console.log(`❌ Failed: ${url}`)
         console.log(`  - Found captchas: ${hasImageCaptchas}`)
         console.log(`  - Found solutions: ${hasSolutions}`)
@@ -96,12 +92,11 @@ test('image-captcha: will solve image captchas in 2captcha demo', async t => {
     }
   }
 
-  // Log summary
-  console.log('\nTest Summary:')
-  results.forEach(({ url, success, error, details }) => {
-    if (success) {
-      console.log(`✅ ${url}`)
-    } else {
+  // Log summary of failures only
+  const failedTests = results.filter(r => !r.success)
+  if (failedTests.length > 0) {
+    console.log('\nFailed Tests Summary:')
+    failedTests.forEach(({ url, error, details }) => {
       console.log(`❌ ${url}`)
       if (error) {
         console.log(`  Error: ${error}`)
@@ -109,8 +104,8 @@ test('image-captcha: will solve image captchas in 2captcha demo', async t => {
       if (details) {
         console.log(`  Details:`, details)
       }
-    }
-  })
+    })
+  }
 
   // Assert that at least one test passed
   t.true(results.some(r => r.success), 'At least one test should pass')

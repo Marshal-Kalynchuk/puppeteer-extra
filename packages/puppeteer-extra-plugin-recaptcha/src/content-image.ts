@@ -86,6 +86,56 @@ export class ImageCaptchaContentScript {
         )
       }
 
+      // Process a captcha image and add it to results
+      const processCaptchaImage = (img: HTMLImageElement) => {
+        if (!img || !img.src) return
+        
+        // Skip if this URL has already been processed
+        if (processedUrls.has(img.src)) {
+          this.debug('Skipping duplicate image', { src: img.src })
+          return
+        }
+
+        // Mark this URL as processed
+        processedUrls.add(img.src)
+
+        try {
+          // Create unique ID
+          const id = `image_${Math.random().toString(36).substring(2, 9)}`
+          
+          // Create captcha info - use original URL
+          const captchaInfo: types.CaptchaInfo = {
+            _vendor: 'image',
+            id: id,
+            imageUrl: img.src, // Preserve original URL
+            url: window.location.href,
+            isInViewport: this.isInViewport(img)
+          }
+
+          // Convert image to base64 if it's on the same origin
+          try {
+            if (this.isSameOrigin(img.src)) {
+              const canvas = document.createElement('canvas')
+              canvas.width = img.width
+              canvas.height = img.height
+              const ctx = canvas.getContext('2d')
+              ctx?.drawImage(img, 0, 0)
+              captchaInfo.imageBase64 = canvas.toDataURL('image/png')
+            }
+          } catch (error) {
+            this.debug('Error converting image to base64', { error })
+          }
+
+          // Add visual feedback
+          this.visualFeedback(captchaInfo)
+
+          // Add to result
+          result.captchas.push(captchaInfo)
+        } catch (error) {
+          this.debug('Error processing image', { error, src: img.src })
+        }
+      }
+
       // First try to find captchas within forms
       for (const form of Array.from(forms)) {
         // Get all images within the form
@@ -94,54 +144,24 @@ export class ImageCaptchaContentScript {
         
         for (let i = 0; i < images.length; i++) {
           const img = images[i] as HTMLImageElement
-          if (!img || !img.src) continue
-          
           // Check if this is a captcha image using case-insensitive check
-          if (!isCaptchaImage(img)) continue
-
-          // Skip if this URL has already been processed
-          if (processedUrls.has(img.src)) {
-            this.debug('Skipping duplicate image', { src: img.src })
-            continue
+          if (isCaptchaImage(img)) {
+            processCaptchaImage(img)
           }
+        }
+      }
 
-          // Mark this URL as processed
-          processedUrls.add(img.src)
-
-          try {
-            // Create unique ID
-            const id = `image_${Math.random().toString(36).substring(2, 9)}`
-            
-            // Create captcha info - use original URL
-            const captchaInfo: types.CaptchaInfo = {
-              _vendor: 'image',
-              id: id,
-              imageUrl: img.src, // Preserve original URL
-              url: window.location.href,
-              isInViewport: this.isInViewport(img)
-            }
-
-            // Convert image to base64 if it's on the same origin
-            try {
-              if (this.isSameOrigin(img.src)) {
-                const canvas = document.createElement('canvas')
-                canvas.width = img.width
-                canvas.height = img.height
-                const ctx = canvas.getContext('2d')
-                ctx?.drawImage(img, 0, 0)
-                captchaInfo.imageBase64 = canvas.toDataURL('image/png')
-              }
-            } catch (error) {
-              this.debug('Error converting image to base64', { error })
-            }
-
-            // Add visual feedback
-            this.visualFeedback(captchaInfo)
-
-            // Add to result
-            result.captchas.push(captchaInfo)
-          } catch (error) {
-            this.debug('Error processing image', { error, src: img.src })
+      // Second resort: look for captchas outside of forms
+      if (result.captchas.length === 0) {
+        this.debug('No captchas found in forms, looking everywhere')
+        const allImages = document.querySelectorAll('img')
+        this.debug(`Found ${allImages.length} images on the page`)
+        
+        for (let i = 0; i < allImages.length; i++) {
+          const img = allImages[i] as HTMLImageElement
+          // Check if this is a captcha image using case-insensitive check
+          if (isCaptchaImage(img)) {
+            processCaptchaImage(img)
           }
         }
       }

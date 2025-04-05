@@ -42,3 +42,4 @@ export const getBrowser = async (url = '', opts = {}) => {
 test('requires API key for solving', t => {
   requiresApiKey(t)
 }) 
+
