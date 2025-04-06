@@ -140,6 +140,12 @@ export interface PluginOptions {
   solveImageCaptchas: boolean
 
   provider?: SolutionProvider
+  // Proxy configuration for 2captcha provider
+  proxy?: {
+    server: string       // 'http://username:password@ip:port' or 'http://ip:port'
+    username?: string    // optional
+    password?: string    // optional
+  }
 }
 
 export interface ContentScriptOpts {

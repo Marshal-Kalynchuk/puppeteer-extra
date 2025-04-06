@@ -19,11 +19,70 @@ export interface DecodeRecaptchaAsyncResult {
 export interface TwoCaptchaProviderOpts {
   useEnterpriseFlag?: boolean
   useActionValue?: boolean
+  proxy?: {
+    server: string       // 'http://username:password@ip:port' or 'http://ip:port'
+    username?: string    // optional
+    password?: string    // optional
+  }
 }
 
 const providerOptsDefaults: TwoCaptchaProviderOpts = {
   useEnterpriseFlag: false, // Seems to make solving chance worse?
   useActionValue: true
+  // proxy is undefined by default
+}
+
+/**
+ * Normalize proxy configuration to 2captcha format
+ * @param proxy - Proxy configuration object
+ * @returns Object with proxytype and proxy address for 2captcha API
+ */
+function normalizeProxy(proxy?: TwoCaptchaProviderOpts['proxy']): { proxytype?: string, proxy?: string } {
+  if (!proxy || !proxy.server) {
+    return {}
+  }
+
+  // Parse the URL to extract protocol, host, port
+  let url: URL
+  try {
+    // Add http:// prefix if missing to make URL parsing work
+    const serverUrl = proxy.server.includes('://') ? proxy.server : `http://${proxy.server}`
+    url = new URL(serverUrl)
+  } catch (err) {
+    console.warn('Invalid proxy server URL format:', proxy.server)
+    return {}
+  }
+
+  // Determine proxy type from protocol
+  const proxytype = url.protocol.replace(':', '').toUpperCase()
+  
+  // Build proxy string
+  let proxyStr = ''
+  
+  // Add username/password if provided directly in options (overrides URL auth)
+  if (proxy.username) {
+    proxyStr += proxy.username
+    if (proxy.password) {
+      proxyStr += `:${proxy.password}`
+    }
+    proxyStr += '@'
+  }
+  // Otherwise use auth from URL if available
+  else if (url.username) {
+    proxyStr += url.username
+    if (url.password) {
+      proxyStr += `:${url.password}`
+    }
+    proxyStr += '@'
+  }
+  
+  // Add host and port
+  proxyStr += url.host
+  
+  return {
+    proxytype,
+    proxy: proxyStr
+  }
 }
 
 async function decodeRecaptchaAsync(
@@ -154,9 +213,15 @@ async function getSolution(
         extraData['enterprise'] = 1
       }
       
-      if (process.env['2CAPTCHA_PROXY_TYPE'] && process.env['2CAPTCHA_PROXY_ADDRESS']) {
-           extraData['proxytype'] = process.env['2CAPTCHA_PROXY_TYPE'].toUpperCase()
-           extraData['proxy'] = process.env['2CAPTCHA_PROXY_ADDRESS']
+      // Handle proxy configuration
+      const proxyConfig = normalizeProxy(opts.proxy)
+      if (proxyConfig.proxytype && proxyConfig.proxy) {
+        extraData['proxytype'] = proxyConfig.proxytype
+        extraData['proxy'] = proxyConfig.proxy
+      } else if (process.env['2CAPTCHA_PROXY_TYPE'] && process.env['2CAPTCHA_PROXY_ADDRESS']) {
+        // Maintain backward compatibility with environment variables
+        extraData['proxytype'] = process.env['2CAPTCHA_PROXY_TYPE'].toUpperCase()
+        extraData['proxy'] = process.env['2CAPTCHA_PROXY_ADDRESS']
       }
         
       const { err, result, invalid } = await decodeRecaptchaAsync(

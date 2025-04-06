@@ -41,7 +41,8 @@ export class PuppeteerExtraPluginRecaptcha extends PuppeteerExtraPlugin {
       solveInViewportOnly: false,
       solveScoreBased: false,
       solveInactiveChallenges: false,
-      solveImageCaptchas: false
+      solveImageCaptchas: false,
+      proxy: undefined
     }
   }
 
@@ -231,6 +232,15 @@ export class PuppeteerExtraPluginRecaptcha extends PuppeteerExtraPlugin {
       }
       fn = builtinProvider.fn
     }
+    
+    // Pass proxy configuration from plugin options to provider
+    if (provider.id === TwoCaptcha.PROVIDER_ID && !provider.opts) {
+      provider.opts = {}
+    }
+    if (provider.id === TwoCaptcha.PROVIDER_ID && this.opts.proxy) {
+      provider.opts.proxy = this.opts.proxy
+    }
+    
     const response = await fn.call(
       this,
       captchas,
