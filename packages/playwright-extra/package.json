@@ -1,6 +1,6 @@
 {
-  "name": "playwright-extra",
-  "version": "4.3.7",
+  "name": "@marshalkalynchuk/playwright-extra",
+  "version": "4.3.8",
   "description": "Teach playwright new tricks through plugins.",
   "repository": "berstend/puppeteer-extra",
   "homepage": "https://github.com/berstend/puppeteer-extra/tree/master/packages/playwright-extra#readme",
@@ -47,8 +47,8 @@
     "npm-run-all": "^4.1.5",
     "playwright": "1.24.2",
     "prettier": "^2.7.1",
-    "puppeteer-extra-plugin": "^3.2.4",
-    "puppeteer-extra-plugin-anonymize-ua": "^2.4.7",
+    "puppeteer-extra-plugin": "^3.2.5",
+    "puppeteer-extra-plugin-anonymize-ua": "^2.4.8",
     "rimraf": "^3.0.0",
     "rollup": "^1.27.5",
     "rollup-plugin-commonjs": "^10.1.0",
@@ -71,5 +71,6 @@
     "playwright-core": {
       "optional": true
     }
-  }
+  },
+  "gitHead": "71fa8209b5e319a18b82e6a08623e4e1dec77b1e"
 }

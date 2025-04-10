@@ -1,6 +1,6 @@
 {
   "name": "puppeteer-extra-plugin-user-data-dir",
-  "version": "2.4.2",
+  "version": "2.4.3",
   "description": "Custom user data directory for puppeteer.",
   "main": "index.js",
   "repository": "berstend/puppeteer-extra",
@@ -34,7 +34,7 @@
   "dependencies": {
     "debug": "^4.1.1",
     "fs-extra": "^10.0.0",
-    "puppeteer-extra-plugin": "^3.2.4",
+    "puppeteer-extra-plugin": "^3.2.5",
     "rimraf": "^3.0.2"
   },
   "peerDependencies": {
@@ -49,5 +49,5 @@
       "optional": true
     }
   },
-  "gitHead": "babb041828cab50c525e0b9aab02d58f73416ef3"
+  "gitHead": "71fa8209b5e319a18b82e6a08623e4e1dec77b1e"
 }
